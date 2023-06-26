@@ -1,0 +1,480 @@
+'''
+MIT License
+
+Copyright (c) [2023] [MannuVilasara]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
+# IMPORTS
+import discord
+from constants import token,spam,modappch
+from discord.ext import commands
+import json
+import requests
+from utils import *
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.dm_messages = True
+intents.presences = True 
+intents.members = True 
+
+activity=discord.Activity(type=discord.ActivityType.watching, name="✔ MISFIT") #CHANGE THE ACTIVITY TO YOUR WISH
+
+bot = commands.Bot(command_prefix="m!",intents=intents,status=discord.Status.idle,activity=activity) #CHANGE THE PREFIX
+
+bot.remove_command("help")
+# ON MESSAGE EVENT
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    await bot.process_commands(message)
+    data = mongo()
+    create_user = data.find_one({"_id":int(message.author.id)})
+    if message.author == bot.user:
+        return
+# ACCEPTING REPSONSES FROM DM AND SENDING THEM IN SPAM CHANNEL
+    if isinstance(message.channel, discord.DMChannel): 
+        channel_id = int(spam) # Replace with the ID of the channel you want to send the message to
+        channel = bot.get_channel(channel_id)
+        embed = discord.Embed(title=str(message.author.name),description = str(message.content))
+        embed.set_thumbnail(url=message.author.display_avatar)
+        if message.author == bot.user:
+            return
+        if create_user == None:
+            print(f'Received a DM from {message.author.name}: {message.content}')
+            await message.author.send("https://discord.gg/unusual")
+            await message.author.send("Please Send Atleast 1 message in our server")
+            await channel.send(embed=embed)
+        else:
+            print(f'Received a DM from {message.author.name}: {message.content}')
+            await channel.send(embed=embed)
+    
+# NOT COMPLETED CODE
+    # chatbotchannel = 1122217290251911168
+    # gptchannel = bot.get_channel(chatbotchannel)
+    # if message.channel.id == chatbotchannel:
+    #     async with gptchannel.typing():
+    #         response = openAI(prompt=message.content)
+    #         await gptchannel.send(response)
+
+
+# ADDING THE USERS TO DB ON MESSAGE
+    if message.author == bot.user:
+        return
+    try:
+        if create_user == None:
+            user = {
+                "_id":int(message.author.id),
+                "name":str(message.author.name),
+                # "messages":1
+
+            }
+            data.insert_one(user)
+            print(f"Added {str(message.author.name)} to db")
+        # else:
+        #     data.delete_one(create_user)
+        #     create_user["messages"] = int(create_user["messages"]) + 1
+        #     data.insert_one(create_user)
+        #     print("Updated messages count for", str(message.author))
+
+
+    except Exception as e:
+        print(e)
+
+# VIEW AVATAR COMMAND
+@bot.command()
+async def av(ctx,member:discord.User = None):
+    if member == None:
+        member = ctx.author
+    embed = discord.Embed()
+    embed.set_image(url=member.display_avatar)
+    await ctx.send(embed = embed)
+
+# PING
+@bot.command()
+async def ping(ctx):
+    ping = bot.latency
+    await ctx.send(f"`Pong : {int(ping*100)}`")
+
+# VERIFY (UNDER DEVELOPMENT)
+@bot.command()
+async def verify(ctx):
+    role = discord.utils.get(ctx.guild.roles, name="-.*-member-.*-")
+    role2 = discord.utils.get(ctx.guild.roles, name="unverified")
+    question = discord.Embed(title = "React With ✅ to verify")
+    message = await ctx.send(embed=question)
+    await message.add_reaction('✅')
+
+
+    def check(reaction, user):
+        return user == ctx.author and str(reaction.emoji) in ['🔴','✅'] 
+    
+    while True:
+        try:
+            reaction, _ = await bot.wait_for('reaction_add', check=check)  
+        except TimeoutError:
+            await ctx.send('aah Mode')
+        else:
+            if reaction.emoji == '✅':
+                member = ctx.author
+                await member.add_roles(role)
+                await member.remove_roles(role2)
+                await ctx.send(f"{member.display_name} Verified!.")
+
+# MOD APPLICATION
+@bot.command()
+async def modapp(ctx):
+    db = mongo()
+    user = db.find_one({"_id":int(ctx.author.id)})
+    if 'mod' not in user:
+        question = discord.Embed(title = "Are You Sure want to create Mod Application")
+        message = await ctx.send(embed=question)
+        await message.add_reaction('✔')
+        await message.add_reaction('❌')  # Add reaction options
+
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ['✔','❌'] 
+        try:
+            reaction, _ = await bot.wait_for('reaction_add',timeout=60.0, check=check)  
+        except TimeoutError:
+            await ctx.send('Timed Out')
+        else:
+            if reaction.emoji == '✔':
+                embed = discord.Embed(title = "MOD APPLICATION",description=f"New Application created by {ctx.author.name}")
+                await ctx.send(embed=embed)
+                await ctx.send(f"<@{ctx.author.id}> `Please check Your DM. If didn't recieved please make sure your dm's are open for this server`")
+                await ctx.author.send('Please Reply In Single Line')
+                await ctx.author.send('https://media.tenor.com/Vant9OGye9gAAAAC/rainbow-bar-divider.gif')
+                questions = [
+                    'What is your discord username?',
+                    'what is your discord userid?',
+                    'How old are you?',
+                    'Are You level 15 or above on our server?',
+                    'For how many hours you are active in discord?',
+                    'What is your timezone?',
+                    'Do you have any mod experience before?',
+                    'You created a new role how will you check if you had given correct perms or not?',
+                    "A person is blackmailing someone in their dm what would you do?",
+                    'A person is asking for a mod or admin or any other higher role,what will be your response?',
+                    'What is the condition for warn?',
+                ]
+                answers = {}
+                data = ["username","userid","age","level","active","timezone","experience","perms","blackmailing","ignore","warn"]
+
+                for i in range (len(questions)):
+                    await ctx.author.send(questions[i])
+
+                    def check(message):
+                        return message.author == ctx.author and isinstance(message.channel, discord.DMChannel)
+
+                    try:
+                        response = await bot.wait_for('message', timeout=90.0, check=check)
+                        answers[data[i]] = response.content
+                    except TimeoutError:
+                        await ctx.author.send('You did not provide a response in time.')
+                        break
+                json_data = json.dumps(answers, indent=4)
+                channel_id = int(modappch)
+                channel = bot.get_channel(channel_id)
+
+                # form data
+                username = answers["username"]
+                userid = answers["userid"]
+                age = answers["age"]
+                level = answers["level"]
+                active = answers["active"]
+                timezone = answers["timezone"]
+                experience = answers["experience"]
+                perms = answers["perms"]
+                blackmailing = answers["blackmailing"]
+                ignore = answers["ignore"]
+                warn = answers["warn"]
+
+                application = discord.Embed(title="MOD APPLICATION",description=f"Here is Mod Application from {ctx.author.name} \n **__User__** \n\n Name: {username} \n\n UserID: {userid} \n\n Age: {age} \n\n __**Questions**__ \n\n Are You level 15 or above on our server? \n {level} \n\n For how many hours you are active in discord? \n {active} \n\n What is your timezone? \n {timezone} \n\n Do you have any mod experience before? \n {experience} \n\n You created a new role how will you check if you had given correct perms or not? \n {perms} \n\n A person is blackmailing someone in their dm what would you do? \n {blackmailing} \n\n A person is asking for a mod or admin or any other higher role,what will be your response? \n {ignore} \n\n What is the condition for warn? \n {warn}")
+                if channel is None:
+                    return
+                else:
+                    await channel.send(f"here's a response from <@{ctx.author.id}>",embed = application)
+                    db.delete_one(user)
+                    user["mod"] = "True"
+                    db.insert_one(user)
+
+                await ctx.author.send("Thank you for answering the questions! Your Response has been recorded. Please don't send multiple applications or we have to remove your name from database")
+            elif reaction.emoji == '❌':
+                await ctx.send("Application Canceled")
+    else:
+        await ctx.send("You Can Only submit one application at a time. Please wait for the Admin to read that")
+
+@bot.command()
+@commands.has_role("read mod application")
+async def read(ctx,member : discord.Member = None):
+    if member == None:
+        await ctx.send("Please Select the user to mark his application read")
+    else:
+        db = mongo()
+        user = db.find_one({"_id":member.id})
+        db.delete_one(user)
+        del user["mod"]
+        db.insert_one(user)
+        await ctx.send(f"Marked <@{member.id}> Application as read")
+
+# @bot.command()
+# async def messages(ctx,member :discord.Member = None):
+    
+#     if member == None:
+#         member = ctx.author
+
+#     db = mongo()
+#     user = db.find_one({"_id":int(member.id)})
+#     messages = user["messages"]
+#     embed = discord.Embed(title=f"{member.display_name} sent {messages} messages.",colour=discord.Colour.green())
+#     await ctx.send(embed=embed)
+
+@bot.tree.command(name="mannu",description="Mannu")
+async def mannu(interation :discord.Interaction):
+    await interation.response.send_message("Hey")
+    
+
+@bot.command()
+async def cat(ctx):
+    get = getCat()
+    url = get[0]["url"]
+    embed = discord.Embed()
+    embed.set_image(url=url)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def dog(ctx):
+    url = getDog()
+    embed = discord.Embed()
+    embed.set_image(url=url)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def truth(ctx):
+    a = requests.get("https://api.truthordarebot.xyz/v1/truth").json()
+    await ctx.send(a["question"])
+
+@bot.command()
+async def dare(ctx):
+    a = requests.get("https://api.truthordarebot.xyz/api/dare").json()
+    await ctx.send(a["question"])
+
+@bot.command()
+async def wyr(ctx):
+    a = requests.get("https://api.truthordarebot.xyz/api/wyr").json()
+    await ctx.send(a["question"])
+
+@bot.command()
+async def nhie(ctx):
+    a = requests.get("https://api.truthordarebot.xyz/api/nhie").json()
+    await ctx.send(a["question"])
+
+@bot.command()
+async def gpt(ctx,*,prompt :str = None):
+    async with ctx.typing():
+        if prompt == None:
+            await ctx.send("Please Type Your question")
+        else:
+            response = openAI(prompt=prompt)
+            await ctx.send(response)
+
+
+@bot.command()
+async def set_timezone(ctx,timezone:str = None):
+    if timezone == None:
+            await ctx.send("Please enter your timezone")
+            return
+    a = requests.get(f"https://www.timeapi.io/api/Time/current/zone?timeZone={timezone}").json()
+    if "Invalid Timezone" in a:
+        await ctx.send("Please Enter A Valid Timezone")
+        return
+    else:
+        db = mongo()
+        user = db.find_one({"_id":int(ctx.author.id)})
+        if 'timezone' not in user:
+            question = discord.Embed(title = f"Are You Sure want to Set {timezone} as your timezone")
+            message = await ctx.send(embed=question)
+            await message.add_reaction('✔')
+            await message.add_reaction('❌')  # Add reaction options
+
+
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['✔','❌'] 
+            try:
+                reaction, _ = await bot.wait_for('reaction_add',timeout=60.0, check=check)  
+            except TimeoutError:
+                await ctx.send('Timed Out')
+            else:
+                if reaction.emoji == '✔':
+                    db.delete_one(user)
+                    user["timezone"] = timezone
+                    db.insert_one(user)
+                    await ctx.send("Success")
+                elif reaction.emoji == '❌':
+                    await ctx.send("Canceled")
+        else:
+            db.delete_one(user)
+            del user["timezone"]
+            user["timezone"] = timezone
+            db.insert_one(user)
+            await ctx.send(f"`Updated your timezone to {timezone}`")
+
+@bot.command()
+async def time(ctx,member:discord.Member = None):
+    if member == None:
+        member = ctx.author
+    db = mongo()
+    user = db.find_one({"_id":int(member.id)})
+    if 'timezone' in user:
+        timezone = user["timezone"]
+        a = requests.get(f"https://www.timeapi.io/api/Time/current/zone?timeZone={timezone}").json()
+        time = a["time"]
+        date = a["date"]
+        colour = discord.Colour.green()
+        embed = discord.Embed(title=f"Time for {member.display_name}",description=f"Date: {date} \n Time: {time} \n  <a:anime_zerotwohypedfast:1120375721819377715> ",color=colour)
+        embed.set_thumbnail(url=member.display_avatar)
+        await ctx.send(embed=embed)
+        return
+    else:
+        if ctx.author.id == member.id:
+            await ctx.send(f"Please set your timezone")
+        else:
+            await ctx.send(f"Please ask {member.display_name} to set their timezone")
+
+@bot.command()
+async def echo(ctx,*,message:str = "Mannu is good boy."):
+    message_id = ctx.message.id
+    delete = await ctx.channel.fetch_message(message_id)
+    await delete.delete()
+    await ctx.send(message)
+
+@bot.command()
+async def spotify(ctx, member: discord.Member = None):
+    if member == None:
+        member = ctx.author
+    spotify_activity = None
+    for activity in member.activities:
+        if isinstance(activity, discord.Spotify):
+            spotify_activity = activity
+            break
+
+    if spotify_activity is not None:
+        song_name = spotify_activity.title
+        artist_name = spotify_activity.artist
+        album_name = spotify_activity.album
+        thumbnail = spotify_activity.album_cover_url
+        duration = spotify_activity.duration
+
+        embed = discord.Embed(title="Spotify",description=f"**Song**\n{song_name}\n\n**Artist(s)**\n{artist_name}\n\n**Album**\n{album_name}\n\n**Duration**\n{duration}",color=discord.Colour.green())
+        embed.set_thumbnail(url=thumbnail)
+        embed.set_footer(text=f"Spotify of {member.display_name}",icon_url=member.display_avatar)
+        await ctx.send(embed=embed)
+    else:
+        embed = discord.Embed(title="Spotify",description=f"Not Listening",color=discord.Colour.red())
+        embed.set_footer(text=f"Spotify of {member.display_name}",icon_url=member.display_avatar)
+        await ctx.send(embed=embed)
+
+@bot.command()
+async def gh(ctx, username):
+    url = f'https://api.github.com/users/{username}'
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        avatar = data.get('avatar_url')
+        name = data.get('name')
+        bio = data.get('bio')
+        followers = data.get('followers')
+        following = data.get('following')
+        public_repos = data.get('public_repos')
+        url = data.get('html_url')
+
+        embed = discord.Embed(title=f"GitHub Profile - {username}", url=url)
+        embed.set_thumbnail(url=avatar)
+        if name:
+            embed.add_field(name="Name", value=name, inline=False)
+        if bio:
+            embed.add_field(name="Bio", value=bio, inline=False)
+        if followers:
+            embed.add_field(name="Followers", value=followers, inline=True)
+        if following:
+            embed.add_field(name="Following", value=following, inline=True)
+        if public_repos:
+            embed.add_field(name="Public Repositories", value=public_repos, inline=True)
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("GitHub profile not found.")
+
+@bot.command()
+async def sum(ctx,a:int,b:int):
+    c = a + b
+    await ctx.send(c)
+
+@bot.command()
+async def diff(ctx,a:int,b:int):
+    c = a - b
+    await ctx.send(c)
+
+@bot.command()
+async def multiply(ctx,a:int,b:int):
+    c = a*b
+    await ctx.send(c)
+
+@bot.command()
+async def div(ctx,a:int,b:int):
+    c = a/b
+    await ctx.send(c)
+@bot.command()
+async def cuddle(ctx,member:discord.Member):
+    if member == None:
+        await ctx.send("So Lonely.")
+        return
+    if ctx.author == member:
+        await ctx.send("You can't cuddle with yourself.")
+    else:
+        a = requests.get("https://api.waifu.pics/sfw/cuddle").json()
+        url = a["url"]
+        embed = discord.Embed(title=f"{ctx.author.display_name} cuddle with {member.display_name}")
+        embed.set_image(url=url)
+        await ctx.send(embed=embed)
+@bot.command()
+async def help(ctx):
+    description = "**__Official Server Bot of Misfit__** \n\n **Owners**: <@1035439449070383106>,<@790503319889379330>,<@953323321255145514> \n\n**Get A random Cat pic**\n`m!cat`\n\n**Get A random Dog pic**\n`m!dog`\n\n **Mathematical Operations**\n`m!sum(+)`  \n  `m!diff(-)`  \n  `m!muliply(*)`  \n  `m!divide(/)`\n\n**Get Spotify Playing Status**\n`m!spotify`\n\n**Search Github Profile**\n`m!gh`"
+    embed = discord.Embed(title="Misfit Help",description=description,color=discord.Colour.green(),url="https://github.com/MannuVilasara/misfit")
+    img = ctx.guild.icon
+    embed.set_thumbnail(url=img)
+    embed.add_field(name="--**Create Mod Application**--",value="`m!modapp`",inline= True)
+    embed.add_field(name="--**Get User avatar**--",value="`m!av`",inline= True)
+    embed.add_field(name="--**Ask gpt**--",value="`m!gpt`",inline= True)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def waifu(ctx):
+    a = requests.get("https://api.waifu.pics/sfw/waifu").json()
+    url = a["url"]
+    embed = discord.Embed(color= discord.Colour.green())
+    embed.set_image(url=url)
+    await ctx.send(embed=embed)
+bot.run(token)
