@@ -76,8 +76,9 @@ MAX_CHARS_PER_REPLY_MSG = (
 )
 
 
-token = os.environ["token"]
-mongos = os.environ["mongos"]
+TOKEN = os.environ["TOKEN"]
+MONGODB_URI = os.environ["MONGODB_URI"]
 # OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-spam = os.environ["SPAM_CHANNEL"]  
-modappch = os.environ["MOD_APPLICATION_CHANNEL"]
+SPAM_CHANNEL_ID = os.environ["SPAM_CHANNEL_ID"]  
+MOD_APPLICATION_CHANNEL_ID = os.environ["MOD_APPLICATION_CHANNEL_ID"]
+BOT_ADMIN_ROLE_ID = os.environ["BOT_ADMIN_ROLE_ID"]

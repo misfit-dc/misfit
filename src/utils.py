@@ -1,6 +1,6 @@
 # IMPORTS
 import openai
-from constants import OPENAI_API_KEY,mongos
+from constants import OPENAI_API_KEY,MONGODB_URI
 import requests
 import pymongo
 from constants import (
@@ -113,10 +113,10 @@ def openAI(prompt):
 def mongo():
     dns.resolver.default_resolver=dns.resolver.Resolver(configure=False)
     dns.resolver.default_resolver.nameservers=['8.8.8.8']
-    data = pymongo.MongoClient(mongos)
+    data = pymongo.MongoClient(MONGODB_URI)
     user = data["Misfit"]["users"]
     return user
 def server():
-    data = pymongo.MongoClient(mongos)
+    data = pymongo.MongoClient(MONGODB_URI)
     server = data["Misfit"]["server"]
     return server

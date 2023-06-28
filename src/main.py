@@ -23,7 +23,7 @@ SOFTWARE.
 '''
 # IMPORTS
 import discord
-from constants import token,spam,modappch
+from constants import TOKEN,SPAM_CHANNEL_ID,MOD_APPLICATION_CHANNEL_ID,BOT_ADMIN_ROLE_ID
 from discord.ext import commands
 import json
 import requests
@@ -116,29 +116,22 @@ async def on_message(message):
     if message.author == bot.user:
         return
     try:
+        if isinstance(message.channel, discord.DMChannel):
+            return
         if create_user == None:
             user = {
                 "_id":int(message.author.id),
-                "name":str(message.author.name),
-                # "messages":1
-
+                "name":str(message.author.name)
             }
             data.insert_one(user)
             print(f"Added {str(message.author.name)} to db")
-        # else:
-        #     data.delete_one(create_user)
-        #     create_user["messages"] = int(create_user["messages"]) + 1
-        #     data.insert_one(create_user)
-        #     print("Updated messages count for", str(message.author))
-
-
     except Exception as e:
         print(e)
     if message.author == bot.user:
         return
 # ACCEPTING REPSONSES FROM DM AND SENDING THEM IN SPAM CHANNEL
     if isinstance(message.channel, discord.DMChannel): 
-        channel_id = int(spam) # Replace with the ID of the channel you want to send the message to
+        channel_id = int(SPAM_CHANNEL_ID) # Replace with the ID of the channel you want to send the message to
         channel = bot.get_channel(channel_id)
         embed = discord.Embed(title=str(message.author.name),description = str(message.content))
         embed.set_thumbnail(url=message.author.display_avatar)
@@ -229,40 +222,6 @@ async def on_message(message):
         )
     except Exception as e:
         logger.exception(e)
-# NOT COMPLETED CODE
-    # chatbotchannel = 1122217290251911168
-    # gptchannel = bot.get_channel(chatbotchannel)
-    # if message.channel.id == chatbotchannel:
-    #     async with gptchannel.typing():
-    #         response = openAI(prompt=message.content)
-    #         await gptchannel.send(response)
-
-
-# ADDING THE USERS TO DB ON MESSAGE
-    
-
-@bot.tree.command(name="register",description="Add User to db")
-async def register(interaction:discord.Interaction,member:discord.Member = None):
-    if member == None:
-        member = interaction.user
-    db = mongo()
-    create_user = db.find_one({"_id":int(member.id)})
-    try:
-        if create_user == None:
-            user = {
-                "_id":int(member.id),
-                "name":str(member.display_name),
-                # "messages":1
-
-            }
-            db.insert_one(user)
-            print(f"Added {str(member.id)} to db")
-        else:
-            await interaction.response.send_message("You Are Already in database")
-
-
-    except Exception as e:
-        print(e)
 
 # VIEW AVATAR COMMAND
 @bot.tree.command(name="chat", description="Create a new thread for conversation")
@@ -276,11 +235,6 @@ async def chat_command(int: discord.Interaction, message: str):
         # only support creating thread in text channel
         if not isinstance(int.channel, discord.TextChannel):
             return
-
-        # block servers not in allow list
-        # if should_block(guild=int.guild):
-            return
-
         user = int.user
         logger.info(f"Chat command by {user} {message[:20]}")
         try:
@@ -357,6 +311,7 @@ async def ping(ctx):
 
 # VERIFY (UNDER DEVELOPMENT)
 @bot.command()
+@commands.has_role(BOT_ADMIN_ROLE_ID)
 async def verify(ctx):
     role = discord.utils.get(ctx.guild.roles, name="-.*-member-.*-")
     role2 = discord.utils.get(ctx.guild.roles, name="unverified")
@@ -390,7 +345,6 @@ async def modapp(ctx):
         message = await ctx.send(embed=question)
         await message.add_reaction('✔')
         await message.add_reaction('❌')  # Add reaction options
-
 
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ['✔','❌'] 
@@ -434,7 +388,7 @@ async def modapp(ctx):
                         await ctx.author.send('You did not provide a response in time.')
                         break
                 json_data = json.dumps(answers, indent=4)
-                channel_id = int(modappch)
+                channel_id = int(MOD_APPLICATION_CHANNEL_ID)
                 channel = bot.get_channel(channel_id)
 
                 # form data
@@ -466,7 +420,7 @@ async def modapp(ctx):
         await ctx.send("You Can Only submit one application at a time. Please wait for the Admin to read that")
 
 @bot.command()
-@commands.has_role("read mod application")
+@commands.has_role(BOT_ADMIN_ROLE_ID)
 async def read(ctx,member : discord.Member = None):
     if member == None:
         await ctx.send("Please Select the user to mark his application read")
@@ -477,10 +431,11 @@ async def read(ctx,member : discord.Member = None):
         del user["mod"]
         db.insert_one(user)
         await ctx.send(f"Marked <@{member.id}> Application as read")
+
 @bot.tree.command(name="dm-user",description="Send Direct Message to any user using bot")
-@commands.has_role([997486340268630026,1120332473960767538,1122139309970042890,997486092502712370,1120332452133609632])
+@commands.has_role(BOT_ADMIN_ROLE_ID)
 async def send_dm(interaction:discord.Interaction, member:discord.Member, message:str):
-    if str(interaction.user.get_role(1122139309970042890)) == "read mod application":
+    if str(interaction.user.get_role(BOT_ADMIN_ROLE_ID)) == "read mod application":
         user = await bot.fetch_user(int(member.id))
         embed = discord.Embed(description=f"**Message**: {message}",color=discord.Colour.green())
         embed.set_author(name=interaction.user.display_name,icon_url=interaction.user.display_avatar)
@@ -488,17 +443,6 @@ async def send_dm(interaction:discord.Interaction, member:discord.Member, messag
         await interaction.response.send_message(f"DM sent to {user.name}.")
     else:
         await interaction.response.send_message("No Perms",ephemeral=True)
-    
-#     if member == None:
-#         member = ctx.author
-
-#     db = mongo()
-#     user = db.find_one({"_id":int(member.id)})
-#     messages = user["messages"]
-#     embed = discord.Embed(title=f"{member.display_name} sent {messages} messages.",colour=discord.Colour.green())
-#     await ctx.send(embed=embed)
-
-
 
 @bot.tree.command(name="mannu",description="Mannu")
 async def mannu(interaction :discord.Interaction):
@@ -506,7 +450,6 @@ async def mannu(interaction :discord.Interaction):
     embed.set_thumbnail(url="https://images-ext-1.discordapp.net/external/kKLwKGcE5w2SBsOtpFOHt1HuI9MeR3oX6uZNYWWyOEc/%3Fsize%3D1024/https/cdn.discordapp.com/guilds/997483421255340092/users/1035439449070383106/avatars/a_60c8c1e867cbce3d760c6012c1afd7cf.gif")
     embed.set_footer(text=f"Requested by {interaction.user}")
     await interaction.response.send_message(embed=embed)
-    
 
 @bot.command()
 async def cat(ctx):
@@ -796,6 +739,6 @@ async def help_command(int:discord.Interaction):
     await int.response.send_message(embed=embed)
 
 @bot.tree.command(name="echo",description="Make the bot send Message")
-async def echo_cmd(int:discord.Interaction,message:str):
+async def echo_cmd(int:discord.Interaction,message:str = "Mannu is a Good Boy"):
     await int.response.send_message(message)
-bot.run(token)
+bot.run(TOKEN)
