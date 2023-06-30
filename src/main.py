@@ -311,7 +311,7 @@ async def ping(ctx):
 
 # VERIFY (UNDER DEVELOPMENT)
 @bot.command()
-@commands.has_role(BOT_ADMIN_ROLE_ID)
+@commands.has_role(int(BOT_ADMIN_ROLE_ID))
 async def verify(ctx):
     role = discord.utils.get(ctx.guild.roles, name="-.*-member-.*-")
     role2 = discord.utils.get(ctx.guild.roles, name="unverified")
@@ -433,9 +433,10 @@ async def read(ctx,member : discord.Member = None):
         await ctx.send(f"Marked <@{member.id}> Application as read")
 
 @bot.tree.command(name="dm-user",description="Send Direct Message to any user using bot")
-@commands.has_role(BOT_ADMIN_ROLE_ID)
+@commands.has_role(1122139309970042890)
 async def send_dm(interaction:discord.Interaction, member:discord.Member, message:str):
-    if str(interaction.user.get_role(BOT_ADMIN_ROLE_ID)) == "read mod application":
+    print(interaction.user.get_role(1122139309970042890))
+    if str(interaction.user.get_role(1122139309970042890)) == "read mod application":
         user = await bot.fetch_user(int(member.id))
         embed = discord.Embed(description=f"**Message**: {message}",color=discord.Colour.green())
         embed.set_author(name=interaction.user.display_name,icon_url=interaction.user.display_avatar)

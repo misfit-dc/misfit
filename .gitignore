@@ -1,2 +1,7 @@
 
 .env
+test.py
+src/tempCodeRunnerFile.py
+src/__pycache__/base.cpython-311.pyc
+src/__pycache__/completion.cpython-311.pyc
+*.pyc
